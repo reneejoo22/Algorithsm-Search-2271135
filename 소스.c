@@ -1,139 +1,117 @@
 //다양한 탐색 방법
 
 #include<stdio.h>
+#include <stdlib.h>
 
-#define MAX_NUM 9
-int list[MAX_NUM] = { 1,2,3,4,5,6,7,8,9 };
+#define MAX(a, b) (a)
 
-int seq_search(int key, int low, int high) {	//가장 기본적인 순차탐색_
-
-	int i;
-
-	for (i = low; i < high; i++)
-		if (list[i] == key)
-			return i;	//탐색에 성공하면 위치 값 보냄
-	return -1; //탐색에 실패하면 -1 리턴
-
-}
-
-int seq_search2(int key, int low, int high) {	//개선된 순차탐색_ 
-
-	int i;
-
-	list[high + 1] = key;
-	for (i = low; list[i] != key; i++)	//키 값 찾으면 종료
-		;
-	if (i == (high + 1)) return -1;
-			return i;	//찾은 키값이 임의로 추가했던 값이면 실패니 -1, 아닐시 성공이니 i 반환
-	return -1; //탐색에 실패하면 -1 리턴
-
-}
-
-int binary_search(int key, int low, int high) {	//순환호출을 이용한 이진탐색
-
-	int middle;
-
-	if (low <= high) {
-		middle = (low + high) / 2;
-		if (key == list[middle])
-			return middle;
-		else if (key < list[middle])	//왼쪽 부분 탐색
-			return binary_search(key, low, middle - 1);
-		else	//오른쪽 부분만 탐색
-			return binary_search(key, middle + 1, high);
-	}
-	return -1;	//탐색 실패
-}
-
-int binary_search2(int key, int low, int high) {	//반복을 이용한 이진탐색_ 구간 값과 중간값 계속 갱신
-
-	int middle;
-
-	while (low <= high) {
-
-		middle = (low + high) / 2;
-		
-		if (key == list[middle])
-			return middle;
-		
-		else if (key > list[middle])	//왼쪽 부분 탐색
-			low = middle + 1;
-		else	//오른쪽 부분만 탐색
-			high = middle - 1;
-	}
-	return -1;	//탐색 실패
-}
-
-//색인 순차 탐색
-#define INDEX_SIZE 256
-
-typedef struct {
-
+typedef struct AVLNode {
 	int key;
-	int index;
-} itable;
+	struct AVLNode* left;
+	struct AVLNode* right;
+}AVLNode;
 
-itable index_list[INDEX_SIZE] = { {1,0}, {4,3}, {7,6} };
-
-int index_search(int key, int n) {	//색인 순차탐색
+int get_height(AVLNode* node) {
 	
-	int i, low, high;
-
-	if (key<list[0] || key>list[n - 1])	//정렬된 값의 각각의 끝자리에 해당치 않으면 없다는 뜻이니 실패
-		return -1;
-	for (i = 0; i < INDEX_SIZE; i++)
-		if (index_list[i].key <= key && index_list[i].key > key)
-			break;
-		
-	if (i == INDEX_SIZE) {
-		low = index_list[i - 1].index;
-		high = n;
-	}
-	else {
-		low = index_list[i].index;
-		high = index_list[i + 1].index;
-	}
-
-	return seq_search(key, low, high);
+	int height = 0;
+	
+	if (node != NULL)
+		height = 1 + MAX(get_height(node->left), get_height(node->right));
+			
+	return height;
 }
 
-int interpol_search(int key, int n) {	//보간탐색
+int get_balance(AVLNode* node) {	//균형인수 = 왼노드갯수 - 른노드갯수
 
-	int low, high, j;
+	if (node == NULL)return 0;
 
-	low = 0;
-	high = n - 1;
-
-	while ((list[high] >= key) && (key > list[low])) {	//찾을때까지 연산
-		j = ((float)(key - list[low]) / (list[high] - list[low]) * (high - low) + low);
-		if (key > list[j]) low = j + 1;
-		else if (key < list[j])high = j - 1;
-		else low = j;	//못찾을 경우 해당 값으로 저장하고 연산 다시
-	}
-	if (list[low] == key)return(low);
-	else return -1;
+	return get_height(node->left) - get_height(node->right);
 }
 
-void main() {
+AVLNode* create_node(int key) {
 
-	int start = 0; int end = MAX_NUM - 1;
+	AVLNode* node = (AVLNode*)malloc(sizeof(AVLNode));
+
+	node->key = key;
+	node->left = NULL;
+	node->right = NULL;
+	return(node);
+}
+
+AVLNode* rotate_right(AVLNode* parent) {	// LL 삽입 경우
+
+	AVLNode* child = parent->left;
+	parent->left = child->right;
+	child->right = parent;
+
+	return child;
+}
+
+AVLNode* rotate_left(AVLNode* parent) {	// RR 삽입 경우
+
+	AVLNode* child = parent->right;
+	parent->right = child->left;
+	child->left = parent;
+
+	return child;
+}
+
+AVLNode* insert(AVLNode* node, int key) {
+
+	if (node == NULL)
+		return(create_node(key));
 	
+	if (key < node->key)	//키가 작으면
+		node->left = insert(node->left, key);
+	else if (key > node->key)
+		node->right = insert(node->right, key);
+	else
+		return node;
 
-	printf("순차탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", seq_search(6, start, end));
+	int balance = get_balance(node);
 
-	printf("개선된 순차탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", seq_search2(6, start, end));
+	//LL 타입
+	if (balance > 1 && key < node->left->key)
+		return rotate_right(node);
+	
+	//RR 타입
+	if (balance < -1 && key > node->right->key)
+		return rotate_left(node);
+	
+	//LR 타입
+	if (balance > 1 && key > node->left->key) {
+		node->left = rotate_right(node->left);
+		return rotate_right(node);
+	}
+	//RL 타입
+	if (balance < -1 && key < node->right->key) {
+		node->right = rotate_right(node->right);
+		return rotate_left(node);
+	}
+	return node;
+}
 
-	printf("순환호출을 이용한 이진탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", binary_search(6, start, end));
+void preorder(AVLNode* root) {
+	if (root != NULL) {
+		printf("[%d] ", root->key);
+		preorder(root->left);
+		preorder(root->right);
+	}
+}
 
-	printf("반복을 이용한 이진탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", binary_search2(6, start, end));
+int main(void) {
 
-	printf("색인 순차탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", index_search(6, MAX_NUM));
+	AVLNode* root = NULL;
 
-	printf("보간탐색_6 찾기\n");
-	printf("결과_ [%d] 위치해있음\n\n", interpol_search(6, MAX_NUM));
+	root = insert(root, 10);
+	root = insert(root, 20);
+	root = insert(root, 30);
+	root = insert(root, 40);
+	root = insert(root, 50);
+	root = insert(root, 29);
+
+	printf("전위 순회 결과\n");
+	preorder(root);
+
+	return 0;
 }
